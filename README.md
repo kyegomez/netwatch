@@ -1,16 +1,16 @@
-# NETWATCH
+# NetWatch
 
 ![img](img.png)
 
 **Real-time network security observability for macOS endpoints.**
 
-NETWATCH is a terminal-based security monitoring tool that gives you continuous, live visibility into every active network connection on your machine — with automatic risk scoring, GeoIP intelligence, VPN status, process path validation, and new-connection alerting. Built for security-conscious individuals, developers, and teams who need to know exactly what their machine is talking to and why.
+NetWatch is a terminal-based security monitoring tool that gives you continuous, live visibility into every active network connection on your machine with automatic risk scoring, GeoIP intelligence, VPN status, process path validation, and new-connection alerting. Built for security-conscious individuals, developers, and teams who need to know exactly what their machine is talking to and why.
 
 ---
 
 ## Overview
 
-Modern endpoints make hundreds of concurrent network connections. Most security tools surface this data only after an incident. NETWATCH surfaces it in real time — with enough context to act on it immediately.
+Modern endpoints make hundreds of concurrent network connections. Most security tools surface this data only after an incident. NetWatch surfaces it in real time — with enough context to act on it immediately.
 
 Every second, NETWATCH:
 
