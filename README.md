@@ -23,6 +23,33 @@ Every second, NETWATCH:
 
 ---
 
+## Installation
+
+**Requirements:** Python 3.10+, macOS (Linux compatible with minor limitations)
+
+```bash
+git clone https://github.com/kyegomez/netwatch
+cd netwatch
+pip install -r requirements.txt
+```
+
+## Usage
+
+```bash
+# Standard mode
+python3 netwatch.py
+
+# Full process visibility (recommended)
+sudo python3 netwatch.py
+
+# With DNS hostname resolution for remote IPs
+sudo python3 netwatch.py --resolve
+```
+
+Press `Ctrl+C` to stop.
+
+---
+
 ## Features
 
 ### System Dashboard
@@ -116,35 +143,6 @@ A live sidebar showing:
 psutil>=5.9
 rich>=13.0
 ```
-
----
-
-## Installation
-
-```bash
-git clone <repo>
-cd netwatch
-pip install psutil rich
-```
-
-No build step. No daemon. No configuration files required.
-
----
-
-## Usage
-
-```bash
-# Standard mode
-python3 netwatch.py
-
-# Full process visibility (recommended)
-sudo python3 netwatch.py
-
-# With DNS hostname resolution for remote IPs
-sudo python3 netwatch.py --resolve
-```
-
-Press `Ctrl+C` to stop.
 
 ---
 
