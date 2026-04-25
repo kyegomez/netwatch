@@ -1,0 +1,60 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry]
+name = "netwatch-scan"
+version = "0.1.0"
+description = "Active network connection monitor — real-time visibility into every TCP/UDP connection on your machine"
+license = "MIT"
+authors = ["Kye Gomez <kye@swarms.world>"]
+homepage = "https://github.com/kyegomez/netwatch"
+documentation = "https://github.com/kyegomez/netwatch/blob/main/README.md"
+readme = "README.md"
+repository = "https://github.com/kyegomez/netwatch"
+packages = [{include = "netwatch"}]
+keywords = [
+    "network",
+    "monitor",
+    "netwatch",
+    "connections",
+    "tcp",
+    "udp",
+    "psutil",
+    "rich",
+    "security",
+    "devops",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Topic :: System :: Networking :: Monitoring",
+    "Topic :: Security",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+]
+
+
+[tool.poetry.scripts]
+netwatch = "netwatch.netwatch:main"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+psutil = ">=5.9"
+rich = ">=13.0"
+
+
+[tool.poetry.group.lint.dependencies]
+ruff = ">=0.5.1"
+
+[tool.poetry.group.test.dependencies]
+pytest = ">=8.1.1"
+
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

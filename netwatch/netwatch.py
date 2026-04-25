@@ -1,38 +1,24 @@
 #!/usr/bin/env python3
-"""
-NETWATCH v1.0 — Active Network Connection Monitor
-Requires: pip install rich psutil
-"""
 
 import json
 import os
 import socket
 import subprocess
+import sys
 import threading
 import time
-import sys
 import urllib.request
 from datetime import datetime
 from typing import NamedTuple
 
-try:
-    import psutil
-except ImportError:
-    print("Missing dependency: pip install psutil rich")
-    sys.exit(1)
-
-try:
-    from rich.console import Console
-    from rich.table import Table
-    from rich.panel import Panel
-    from rich.text import Text
-    from rich.live import Live
-    from rich.align import Align
-    from rich import box
-    from rich.console import Group
-except ImportError:
-    print("Missing dependency: pip install psutil rich")
-    sys.exit(1)
+import psutil
+from rich import box
+from rich.align import Align
+from rich.console import Console, Group
+from rich.live import Live
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
 
 console = Console()
 
@@ -47,34 +33,34 @@ BANNER = r"""
 
 STATUS_STYLE = {
     "ESTABLISHED": "bold green",
-    "LISTEN":      "bold cyan",
-    "TIME_WAIT":   "yellow",
-    "CLOSE_WAIT":  "bold yellow",
-    "SYN_SENT":    "bold magenta",
-    "SYN_RECV":    "magenta",
-    "FIN_WAIT1":   "dim yellow",
-    "FIN_WAIT2":   "dim yellow",
-    "LAST_ACK":    "dim red",
-    "CLOSING":     "dim red",
-    "CLOSE":       "dim white",
-    "NONE":        "dim white",
+    "LISTEN": "bold cyan",
+    "TIME_WAIT": "yellow",
+    "CLOSE_WAIT": "bold yellow",
+    "SYN_SENT": "bold magenta",
+    "SYN_RECV": "magenta",
+    "FIN_WAIT1": "dim yellow",
+    "FIN_WAIT2": "dim yellow",
+    "LAST_ACK": "dim red",
+    "CLOSING": "dim red",
+    "CLOSE": "dim white",
+    "NONE": "dim white",
 }
 
 RISK_PORTS = {
-    21:    ("FTP",        "red"),
-    22:    ("SSH",        "yellow"),
-    23:    ("Telnet",     "bold red"),
-    25:    ("SMTP",       "yellow"),
-    53:    ("DNS",        "cyan"),
-    80:    ("HTTP",       "white"),
-    443:   ("HTTPS",      "green"),
-    3306:  ("MySQL",      "bold yellow"),
-    3389:  ("RDP",        "bold red"),
-    5432:  ("PostgreSQL", "bold yellow"),
-    8080:  ("HTTP-Alt",   "white"),
-    8443:  ("HTTPS-Alt",  "green"),
-    27017: ("MongoDB",    "bold yellow"),
-    6379:  ("Redis",      "bold yellow"),
+    21: ("FTP", "red"),
+    22: ("SSH", "yellow"),
+    23: ("Telnet", "bold red"),
+    25: ("SMTP", "yellow"),
+    53: ("DNS", "cyan"),
+    80: ("HTTP", "white"),
+    443: ("HTTPS", "green"),
+    3306: ("MySQL", "bold yellow"),
+    3389: ("RDP", "bold red"),
+    5432: ("PostgreSQL", "bold yellow"),
+    8080: ("HTTP-Alt", "white"),
+    8443: ("HTTPS-Alt", "green"),
+    27017: ("MongoDB", "bold yellow"),
+    6379: ("Redis", "bold yellow"),
 }
 
 
@@ -112,18 +98,35 @@ def port_style(port: int) -> str:
 
 # Base risk score per port (higher = more dangerous)
 _PORT_SCORE: dict[int, int] = {
-    23: 4, 21: 4,          # Telnet, FTP — plaintext & legacy
-    3389: 3,               # RDP — remote desktop, high-value target
-    22: 2, 25: 2,          # SSH, SMTP
-    3306: 2, 5432: 2,      # MySQL, PostgreSQL
-    27017: 2, 6379: 2,     # MongoDB, Redis
-    80: 1, 8080: 1,        # HTTP — unencrypted
-    443: 0, 8443: 0,       # HTTPS — encrypted
-    53: 0,                 # DNS — normal
+    23: 4,
+    21: 4,  # Telnet, FTP — plaintext & legacy
+    3389: 3,  # RDP — remote desktop, high-value target
+    22: 2,
+    25: 2,  # SSH, SMTP
+    3306: 2,
+    5432: 2,  # MySQL, PostgreSQL
+    27017: 2,
+    6379: 2,  # MongoDB, Redis
+    80: 1,
+    8080: 1,  # HTTP — unencrypted
+    443: 0,
+    8443: 0,  # HTTPS — encrypted
+    53: 0,  # DNS — normal
 }
 
-_PRIVATE_PREFIXES = ("10.", "172.16.", "172.17.", "172.18.", "172.19.",
-                     "172.2", "172.3", "192.168.", "127.", "::1", "fe80")
+_PRIVATE_PREFIXES = (
+    "10.",
+    "172.16.",
+    "172.17.",
+    "172.18.",
+    "172.19.",
+    "172.2",
+    "172.3",
+    "192.168.",
+    "127.",
+    "::1",
+    "fe80",
+)
 
 
 def _is_external(ip: str) -> bool:
@@ -134,9 +137,9 @@ def _is_external(ip: str) -> bool:
 
 def calc_risk(conn, suspicious_path: bool = False) -> tuple[str, str]:
     """Return (label, rich_style) — HIGH / MED / LOW."""
-    rip    = conn.raddr.ip   if conn.raddr else ""
-    rport  = conn.raddr.port if conn.raddr else 0
-    laddr  = conn.laddr
+    rip = conn.raddr.ip if conn.raddr else ""
+    rport = conn.raddr.port if conn.raddr else 0
+    laddr = conn.laddr
     status = getattr(conn, "status", "NONE") or "NONE"
 
     effective_port = rport or (laddr.port if laddr else 0)
@@ -161,7 +164,7 @@ def calc_risk(conn, suspicious_path: bool = False) -> tuple[str, str]:
 ## ── GeoIP ──────────────────────────────────────────────────────────────────
 
 _geo_cache: dict[str, str] = {}
-_geo_lock  = threading.Lock()
+_geo_lock = threading.Lock()
 
 
 def _fetch_geo(ip: str) -> None:
@@ -191,9 +194,12 @@ def get_geo(ip: str) -> str:
 
 ## ── VPN detection ──────────────────────────────────────────────────────────
 
+
 def get_vpn_status() -> tuple[str, str]:
     ifaces = list(psutil.net_if_addrs().keys())
-    active = [i for i in ifaces if i.startswith(("utun", "tun", "ppp", "tap", "ipsec", "wg"))]
+    active = [
+        i for i in ifaces if i.startswith(("utun", "tun", "ppp", "tap", "ipsec", "wg"))
+    ]
     if active:
         return f"● ACTIVE  ({active[0]})", "bold green"
     return "✗ NONE", "bold red"
@@ -202,9 +208,12 @@ def get_vpn_status() -> tuple[str, str]:
 ## ── Process path validation ────────────────────────────────────────────────
 
 _SUSPICIOUS_PATHS = (
-    "/tmp/", "/private/tmp/", "/var/tmp/",
+    "/tmp/",
+    "/private/tmp/",
+    "/var/tmp/",
     "/var/folders/",
-    "Downloads/", "Desktop/",
+    "Downloads/",
+    "Desktop/",
 )
 
 
@@ -213,7 +222,7 @@ def get_proc_info(pid: int) -> tuple[str, str, bool]:
     if pid is None:
         return "—", "", False
     try:
-        p   = psutil.Process(pid)
+        p = psutil.Process(pid)
         exe = p.exe()
         suspicious = any(s in exe for s in _SUSPICIOUS_PATHS)
         return p.name(), exe, suspicious
@@ -224,8 +233,8 @@ def get_proc_info(pid: int) -> tuple[str, str, bool]:
 ## ── New-connection tracking ────────────────────────────────────────────────
 
 _seen_conns: dict[tuple, float] = {}
-_seen_lock  = threading.Lock()
-_NEW_TTL    = 6.0  # seconds a connection stays flagged as NEW
+_seen_lock = threading.Lock()
+_NEW_TTL = 6.0  # seconds a connection stays flagged as NEW
 
 
 def _conn_key(conn) -> tuple:
@@ -236,7 +245,7 @@ def _conn_key(conn) -> tuple:
 
 def update_seen(connections: list) -> set:
     """Maintain the seen-connections dict; return keys seen within _NEW_TTL."""
-    now  = time.time()
+    now = time.time()
     keys = {_conn_key(c) for c in connections}
     with _seen_lock:
         for k in keys:
@@ -267,13 +276,19 @@ def get_connections() -> list:
         for proc in psutil.process_iter(["pid"]):
             try:
                 for c in proc.net_connections(kind="inet"):
-                    conns.append(_Conn(c.fd, c.family, c.type, c.laddr, c.raddr, c.status, proc.pid))
+                    conns.append(
+                        _Conn(
+                            c.fd, c.family, c.type, c.laddr, c.raddr, c.status, proc.pid
+                        )
+                    )
             except (psutil.AccessDenied, psutil.NoSuchProcess):
                 pass
         return conns
 
 
-def build_table(connections: list, resolve: bool = False, new_keys: set | None = None) -> Table:
+def build_table(
+    connections: list, resolve: bool = False, new_keys: set | None = None
+) -> Table:
     new_keys = new_keys or set()
     table = Table(
         box=box.HEAVY_HEAD,
@@ -284,22 +299,22 @@ def build_table(connections: list, resolve: bool = False, new_keys: set | None =
         title_style="bold",
         caption=f"[dim]{len(connections)} connection(s) found[/]",
     )
-    table.add_column("№",       style="dim",             width=4,  justify="right")
-    table.add_column("FLAGS",                             width=5,  justify="center")
-    table.add_column("RISK",                              width=8)
-    table.add_column("PROTO",   style="bright_white",    width=6)
-    table.add_column("STATUS",                            width=12)
-    table.add_column("LOCAL",   style="bright_white",    min_width=20)
-    table.add_column("REMOTE",                            min_width=24)
-    table.add_column("COUNTRY",                           min_width=16)
-    table.add_column("PORT",                              width=18)
-    table.add_column("PROCESS",                           min_width=16)
-    table.add_column("PID",     style="dim",              width=7,  justify="right")
+    table.add_column("№", style="dim", width=4, justify="right")
+    table.add_column("FLAGS", width=5, justify="center")
+    table.add_column("RISK", width=8)
+    table.add_column("PROTO", style="bright_white", width=6)
+    table.add_column("STATUS", width=12)
+    table.add_column("LOCAL", style="bright_white", min_width=20)
+    table.add_column("REMOTE", min_width=24)
+    table.add_column("COUNTRY", min_width=16)
+    table.add_column("PORT", width=18)
+    table.add_column("PROCESS", min_width=16)
+    table.add_column("PID", style="dim", width=7, justify="right")
 
     for i, conn in enumerate(connections, 1):
         laddr_str = f"{conn.laddr.ip}:{conn.laddr.port}" if conn.laddr else "—"
-        rip       = conn.raddr.ip   if conn.raddr else ""
-        rport     = conn.raddr.port if conn.raddr else None
+        rip = conn.raddr.ip if conn.raddr else ""
+        rport = conn.raddr.port if conn.raddr else None
 
         if resolve and rip:
             rhost = resolve_host(rip)
@@ -307,21 +322,27 @@ def build_table(connections: list, resolve: bool = False, new_keys: set | None =
         else:
             remote_display = rip or "[dim]—[/dim]"
 
-        status     = getattr(conn, "status", "NONE") or "NONE"
+        status = getattr(conn, "status", "NONE") or "NONE"
         status_txt = Text(status, style=STATUS_STYLE.get(status, "white"))
-        proto      = "TCP" if conn.type == socket.SOCK_STREAM else "UDP"
-        pid_str    = str(conn.pid) if conn.pid else "—"
-        port_txt   = Text(port_label(rport), style=port_style(rport)) if rport else Text("—", style="dim")
+        proto = "TCP" if conn.type == socket.SOCK_STREAM else "UDP"
+        pid_str = str(conn.pid) if conn.pid else "—"
+        port_txt = (
+            Text(port_label(rport), style=port_style(rport))
+            if rport
+            else Text("—", style="dim")
+        )
 
         # Process info with path validation
         proc_name, _exe, suspicious = get_proc_info(conn.pid)
         proc_display = Text()
         if suspicious:
             proc_display.append("⚠ ", style="bold red")
-        proc_display.append(proc_name, style="bold red" if suspicious else "bright_magenta")
+        proc_display.append(
+            proc_name, style="bold red" if suspicious else "bright_magenta"
+        )
 
         # GeoIP
-        country     = get_geo(rip) if rip else "[dim]—[/dim]"
+        country = get_geo(rip) if rip else "[dim]—[/dim]"
         country_txt = Text.from_markup(country)
 
         # Risk (elevated if suspicious path)
@@ -329,8 +350,8 @@ def build_table(connections: list, resolve: bool = False, new_keys: set | None =
         risk_txt = Text(risk_label, style=risk_style)
 
         # New-connection flag
-        is_new  = _conn_key(conn) in new_keys
-        flags   = Text()
+        is_new = _conn_key(conn) in new_keys
+        flags = Text()
         if is_new:
             flags.append("★", style="bold yellow")
         if suspicious:
@@ -338,8 +359,17 @@ def build_table(connections: list, resolve: bool = False, new_keys: set | None =
 
         row_style = "on grey7" if is_new else ""
         table.add_row(
-            str(i), flags, risk_txt, proto, status_txt,
-            laddr_str, remote_display, country_txt, port_txt, proc_display, pid_str,
+            str(i),
+            flags,
+            risk_txt,
+            proto,
+            status_txt,
+            laddr_str,
+            remote_display,
+            country_txt,
+            port_txt,
+            proc_display,
+            pid_str,
             style=row_style,
         )
 
@@ -348,7 +378,7 @@ def build_table(connections: list, resolve: bool = False, new_keys: set | None =
 
 def build_stats(connections: list) -> Panel:
     status_counts: dict[str, int] = {}
-    proc_counts:   dict[str, int] = {}
+    proc_counts: dict[str, int] = {}
     risk_counts = {"HIGH": 0, "MED": 0, "LOW": 0}
 
     for c in connections:
@@ -374,18 +404,30 @@ def build_stats(connections: list) -> Panel:
         f"  [dim green]○ LOW           [/] [bold]{risk_counts['LOW']:>3}[/]",
     ]
 
-    body = "\n".join([
-        "[bold bright_cyan]RISK SUMMARY[/]", *risk_lines,
-        "", "[bold bright_cyan]BY STATUS[/]", *status_lines,
-        "", "[bold bright_cyan]TOP PROCESSES[/]", *proc_lines,
-    ])
-    return Panel(body, title="[bold bright_cyan]STATISTICS[/]", border_style="bright_black", padding=(0, 1))
+    body = "\n".join(
+        [
+            "[bold bright_cyan]RISK SUMMARY[/]",
+            *risk_lines,
+            "",
+            "[bold bright_cyan]BY STATUS[/]",
+            *status_lines,
+            "",
+            "[bold bright_cyan]TOP PROCESSES[/]",
+            *proc_lines,
+        ]
+    )
+    return Panel(
+        body,
+        title="[bold bright_cyan]STATISTICS[/]",
+        border_style="bright_black",
+        padding=(0, 1),
+    )
 
 
 ## ── System info helpers ────────────────────────────────────────────────────
 
 _pub_ip_cache: dict = {"value": "fetching...", "ts": 0.0}
-_pub_ip_lock  = threading.Lock()
+_pub_ip_lock = threading.Lock()
 
 
 def _fetch_public_ip() -> None:
@@ -426,7 +468,9 @@ def get_wifi_ssid() -> str:
             "/System/Library/PrivateFrameworks/Apple80211.framework"
             "/Versions/Current/Resources/airport"
         )
-        out = subprocess.run([airport, "-I"], capture_output=True, text=True, timeout=2).stdout
+        out = subprocess.run(
+            [airport, "-I"], capture_output=True, text=True, timeout=2
+        ).stdout
         for line in out.splitlines():
             if " SSID:" in line:
                 return line.split("SSID:")[1].strip()
@@ -469,14 +513,14 @@ def fmt_bytes(n: int) -> str:
 
 
 def build_header() -> Panel:
-    now      = datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
+    now = datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
     hostname = socket.gethostname()
     local_ip = get_primary_ip()
-    pub_ip   = get_public_ip()
-    ssid     = get_wifi_ssid()
-    gateway  = get_default_gateway()
-    dns      = get_dns_servers()
-    nio      = psutil.net_io_counters()
+    pub_ip = get_public_ip()
+    ssid = get_wifi_ssid()
+    gateway = get_default_gateway()
+    dns = get_dns_servers()
+    nio = psutil.net_io_counters()
 
     vpn_label, vpn_style = get_vpn_status()
 
@@ -486,65 +530,88 @@ def build_header() -> Panel:
     # VPN banner — full width, colour-coded
     vpn_row = Align.center(
         f"[bold bright_green]VPN[/]  [{vpn_style}]{vpn_label}[/]"
-        + ("   [dim](⚠ on public wifi without VPN your traffic is exposed)[/]" if "NONE" in vpn_label else "")
+        + (
+            "   [dim](⚠ on public wifi without VPN your traffic is exposed)[/]"
+            if "NONE" in vpn_label
+            else ""
+        )
     )
 
-    row1 = "   ".join([
-        field("HOST",       hostname),
-        field("LOCAL IP",   local_ip),
-        field("PUBLIC IP",  pub_ip),
-    ])
-    row2 = "   ".join([
-        field("WIFI",       ssid),
-        field("GATEWAY",    gateway),
-        field("DNS",        dns),
-    ])
-    row3 = "   ".join([
-        field("TIME",       now),
-        field("↑ SENT",     fmt_bytes(nio.bytes_sent)),
-        field("↓ RECV",     fmt_bytes(nio.bytes_recv)),
-    ])
+    row1 = "   ".join(
+        [
+            field("HOST", hostname),
+            field("LOCAL IP", local_ip),
+            field("PUBLIC IP", pub_ip),
+        ]
+    )
+    row2 = "   ".join(
+        [
+            field("WIFI", ssid),
+            field("GATEWAY", gateway),
+            field("DNS", dns),
+        ]
+    )
+    row3 = "   ".join(
+        [
+            field("TIME", now),
+            field("↑ SENT", fmt_bytes(nio.bytes_sent)),
+            field("↓ RECV", fmt_bytes(nio.bytes_recv)),
+        ]
+    )
 
     border = "bold red" if "NONE" in vpn_label else "bright_cyan"
-    body   = "\n".join([str(vpn_row), row1, row2, row3])
-    return Panel(Align.center(body), border_style=border, style="on black",
-                 title="[bold bright_cyan]SYSTEM[/]")
+    body = "\n".join([str(vpn_row), row1, row2, row3])
+    return Panel(
+        Align.center(body),
+        border_style=border,
+        style="on black",
+        title="[bold bright_cyan]SYSTEM[/]",
+    )
 
 
 def run(resolve: bool = False) -> None:
     is_root = os.geteuid() == 0
 
-    console.print(Panel(
-        Align.center(Text(BANNER, style="bold bright_cyan")),
-        border_style="bright_cyan",
-        subtitle="[dim]Network Connection Monitor  |  Ctrl+C to stop[/]",
-        padding=(0, 0),
-    ))
+    console.print(
+        Panel(
+            Align.center(Text(BANNER, style="bold bright_cyan")),
+            border_style="bright_cyan",
+            subtitle="[dim]Network Connection Monitor  |  Ctrl+C to stop[/]",
+            padding=(0, 0),
+        )
+    )
 
     if not is_root:
-        console.print(Panel(
-            "[yellow]Running without root — some processes may be hidden. "
-            "For full visibility: [bold]sudo python3 netwatch.py[/bold][/]",
-            border_style="yellow",
-            padding=(0, 1),
-        ))
+        console.print(
+            Panel(
+                "[yellow]Running without root — some processes may be hidden. "
+                "For full visibility: [bold]sudo python3 netwatch.py[/bold][/]",
+                border_style="yellow",
+                padding=(0, 1),
+            )
+        )
 
     try:
         with Live(console=console, refresh_per_second=2, screen=False) as live:
             while True:
                 connections = get_connections()
-                new_keys    = update_seen(connections)
-                live.update(Group(
-                    build_header(),
-                    build_table(connections, resolve=resolve, new_keys=new_keys),
-                    build_stats(connections),
-                ))
+                new_keys = update_seen(connections)
+                live.update(
+                    Group(
+                        build_header(),
+                        build_table(connections, resolve=resolve, new_keys=new_keys),
+                        build_stats(connections),
+                    )
+                )
                 time.sleep(1)
     except KeyboardInterrupt:
         console.print("\n[bold bright_cyan]Scan terminated.[/]")
 
 
-if __name__ == "__main__":
-    # Kick off public IP fetch immediately so it's ready on first render
+def main() -> None:
     threading.Thread(target=_fetch_public_ip, daemon=True).start()
     run(resolve="--resolve" in sys.argv)
+
+
+if __name__ == "__main__":
+    main()

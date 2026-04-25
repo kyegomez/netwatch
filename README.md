@@ -28,22 +28,28 @@ Every second, NETWATCH:
 **Requirements:** Python 3.10+, macOS (Linux compatible with minor limitations)
 
 ```bash
+pip install netwatch-scan
+```
+
+Or install from source:
+
+```bash
 git clone https://github.com/kyegomez/netwatch
 cd netwatch
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ## Usage
 
 ```bash
 # Standard mode
-python3 netwatch.py
+netwatch
 
 # Full process visibility (recommended)
-sudo python3 netwatch.py
+sudo netwatch
 
 # With DNS hostname resolution for remote IPs
-sudo python3 netwatch.py --resolve
+sudo netwatch --resolve
 ```
 
 Press `Ctrl+C` to stop.
